@@ -67,6 +67,68 @@ private slots:
 
 /**/
 
+/**
+ * @brief Item from Youtube search results
+ */
+class YoutubeItem final : public QTreeWidgetItem
+{
+public:
+    YoutubeItem(QTreeWidget *parent);
+    ~YoutubeItem();
+
+    const QString& getTitle();
+    void setTitle(QString title);
+    const QString& getContentId();
+    void setContentId(QString contentId);
+    const QString& getLength();
+    void setLength(QString length);
+    const QString& getUser();
+    void setUser(QString user);
+    const QString& getPublishTime();
+    void setPublishTime(QString publishTime);
+    const QString& getViewCount();
+    void setViewCount(QString viewCount);
+    const QString& getThumbnail();
+    void setThumbnail(QString thumbnail);
+    const QString& getUrl();
+    void setUrl(QString url);
+    const bool isVideo();
+    void setIsVideo(bool isVideo);
+    const bool isPlaylist();
+
+//signals:
+//    /// Signals when related items are requested for an item.
+//    /** Is listened to by YouTube::fetchRelated(). */
+//    void requestRelated(const QString contentId);
+
+//private:
+//    void playOrEnqueue(const QString &param, QTreeWidgetItem *tWI, const QString &addrParam = QString());
+
+private:
+    QString title_;
+    QString contentId_;
+    QString length_;
+    QString user_;
+    QString publishTime_;
+    QString viewCount_;
+    QString thumbnail_;
+    QString url_;
+    bool isVideo_;
+
+//private slots:
+//    void playEntry(QTreeWidgetItem *tWI);
+
+//    void openPage();
+//    void copyPageURL();
+
+//    /// Called when user clicks on "Show related" in context menu, gets the item's contentId and triggers requestRelated().
+//    void showRelated();
+
+//    void contextMenu(const QPoint &p);
+};
+
+/**/
+
 class YouTube;
 
 class PageSwitcher final : public QWidget

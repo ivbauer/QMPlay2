@@ -43,6 +43,8 @@
 #include <QMenu>
 #include <QUrl>
 
+#include <iostream>
+
 Q_LOGGING_CATEGORY(youtube, "Extensions/YouTube")
 
 #define YOUTUBE_URL "https://www.youtube.com"
@@ -144,8 +146,8 @@ void ResultsYoutube::copyPageURL()
 }
 void ResultsYoutube::showRelated()
 {
-    QTreeWidgetItem *tWI = currentItem();
-    const QString contentId = tWI->data(2, Qt::UserRole).toString();
+    YoutubeItem *tWI = (YoutubeItem *)currentItem();
+    const QString contentId = tWI->getContentId();
     emit requestRelated(contentId);
 }
 
@@ -209,6 +211,119 @@ void ResultsYoutube::contextMenu(const QPoint &point)
 
     menu->popup(viewport()->mapToGlobal(point));
 }
+
+/**/
+
+YoutubeItem::YoutubeItem(QTreeWidget *parent) :
+    QTreeWidgetItem(parent)
+{}
+
+YoutubeItem::~YoutubeItem()
+{}
+
+const QString& YoutubeItem::getTitle()
+{
+    return title_;
+}
+
+void YoutubeItem::setTitle(QString title)
+{
+    title_ = title;
+    setText(0, title);
+}
+
+const QString& YoutubeItem::getContentId()
+{
+    return contentId_;
+}
+
+void YoutubeItem::setContentId(QString contentId)
+{
+    contentId_ = contentId;
+    setData(2, Qt::UserRole, contentId);
+}
+
+const QString& YoutubeItem::getLength()
+{
+    return length_;
+}
+
+void YoutubeItem::setLength(QString length)
+{
+    length_ = length;
+    setText(1, length);
+}
+
+const QString& YoutubeItem::getUser()
+{
+    return user_;
+}
+
+void YoutubeItem::setUser(QString user)
+{
+    user_ = user;
+    setText(2, user);
+}
+
+const QString& YoutubeItem::getPublishTime()
+{
+    return publishTime_;
+}
+
+void YoutubeItem::setPublishTime(QString publishTime)
+{
+    publishTime_ = publishTime;
+}
+
+const QString& YoutubeItem::getViewCount()
+{
+    return viewCount_;
+}
+
+void YoutubeItem::setViewCount(QString viewCount)
+{
+    viewCount_ = viewCount;
+}
+
+const QString& YoutubeItem::getThumbnail()
+{
+    return thumbnail_;
+}
+
+void YoutubeItem::setThumbnail(QString thumbnail)
+{
+    thumbnail_ = thumbnail;
+}
+
+const QString& YoutubeItem::getUrl()
+{
+    return url_;
+}
+
+void YoutubeItem::setUrl(QString url)
+{
+    url_ = url;
+    setData(0, Qt::UserRole, url);
+}
+
+const bool YoutubeItem::isVideo()
+{
+    return isVideo_;
+}
+
+void YoutubeItem::setIsVideo(bool isVideo)
+{
+    isVideo_ = isVideo;
+    setData(1, Qt::UserRole, !isVideo);
+    if (!isVideo)
+        setDisabled(true);
+}
+
+const bool YoutubeItem::isPlaylist()
+{
+    return !isVideo_;
+}
+
 
 /**/
 
@@ -928,41 +1043,39 @@ void YouTube::setSearchResults(const QJsonObject &jsonObj, bool isContinuation)
                 url = YOUTUBE_URL "/playlist?list=" + contentId;
             }
 
-            auto tWI = new QTreeWidgetItem(resultsW);
+            auto ytItem = new YoutubeItem(resultsW);
 
-            tWI->setText(0, title);
-            tWI->setText(1, isVideo ? length : tr("Playlist"));
-            tWI->setText(2, user);
+            ytItem->setTitle(title);
+            ytItem->setLength(isVideo ? length : tr("Playlist"));
+            ytItem->setUser(user);
 
             QString tooltip;
-            tooltip += QString("%1: %2\n").arg(resultsW->headerItem()->text(0), tWI->text(0));
-            tooltip += QString("%1: %2\n").arg(isVideo ? resultsW->headerItem()->text(1) : tr("Playlist"), isVideo ? tWI->text(1) : tr("yes"));
-            tooltip += QString("%1: %2").arg(resultsW->headerItem()->text(2), tWI->text(2));
+            tooltip += QString("%1: %2\n").arg(resultsW->headerItem()->text(0), ytItem->getTitle());
+            tooltip += QString("%1: %2\n").arg(isVideo ? resultsW->headerItem()->text(1) : tr("Playlist"), isVideo ? ytItem->getLength() : tr("yes"));
+            tooltip += QString("%1: %2").arg(resultsW->headerItem()->text(2), ytItem->getUser());
             if (isVideo)
             {
                 tooltip += QString("\n%1: %2\n").arg(tr("Publish time"), publishTime);
                 tooltip += QString("%1: %2").arg(tr("View count"), viewCount);
             }
-            tWI->setToolTip(0, tooltip);
+            ytItem->setToolTip(0, tooltip);
 
-            tWI->setData(0, Qt::UserRole, url);
-            tWI->setData(1, Qt::UserRole, !isVideo);
-            tWI->setData(2, Qt::UserRole, contentId);
+            ytItem->setUrl(url);
+            ytItem->setIsVideo(isVideo);
+            ytItem->setContentId(contentId);
 
 
             if (!isVideo)
             {
-                tWI->setDisabled(true);
-
                 auto linkReply = net.start(url, QByteArray(), "Cookie: \r\n");
-                linkReply->setProperty("tWI", QVariant::fromValue((void *)tWI));
+                linkReply->setProperty("tWI", QVariant::fromValue((void *)ytItem));
                 linkReplies += linkReply;
             }
 
             if (!thumbnail.isEmpty())
             {
                 auto imageReply = net.start(thumbnail);
-                imageReply->setProperty("tWI", QVariant::fromValue((void *)tWI));
+                imageReply->setProperty("tWI", QVariant::fromValue((void *)ytItem));
                 imageReplies += imageReply;
             }
         }
@@ -1034,40 +1147,38 @@ void YouTube::setRelatedResults(const QJsonObject &jsonObj, bool isContinuation)
             url = YOUTUBE_URL "/playlist?list=" + contentId;
         }
 
-        auto tWI = new QTreeWidgetItem(resultsW);
+        auto ytItem = new YoutubeItem(resultsW);
 
-        tWI->setText(0, title);
-        tWI->setText(1, isVideo ? length : tr("Playlist"));
-        tWI->setText(2, user);
+        ytItem->setTitle(title);
+        ytItem->setLength(isVideo ? length : tr("Playlist"));
+        ytItem->setUser(user);
 
         QString tooltip;
-        tooltip += QString("%1: %2\n").arg(resultsW->headerItem()->text(0), tWI->text(0));
-        tooltip += QString("%1: %2\n").arg(isVideo ? resultsW->headerItem()->text(1) : tr("Playlist"), isVideo ? tWI->text(1) : tr("yes"));
-        tooltip += QString("%1: %2").arg(resultsW->headerItem()->text(2), tWI->text(2));
+        tooltip += QString("%1: %2\n").arg(resultsW->headerItem()->text(0), ytItem->getTitle());
+        tooltip += QString("%1: %2\n").arg(isVideo ? resultsW->headerItem()->text(1) : tr("Playlist"), isVideo ? ytItem->getLength() : tr("yes"));
+        tooltip += QString("%1: %2").arg(resultsW->headerItem()->text(2), ytItem->getUser());
         if (isVideo)
         {
             tooltip += QString("\n%1: %2\n").arg(tr("Publish time"), publishTime);
             tooltip += QString("%1: %2").arg(tr("View count"), viewCount);
         }
-        tWI->setToolTip(0, tooltip);
+        ytItem->setToolTip(0, tooltip);
 
-        tWI->setData(0, Qt::UserRole, url);
-        tWI->setData(1, Qt::UserRole, !isVideo);
-        tWI->setData(2, Qt::UserRole, contentId);
+        ytItem->setUrl(url);
+        ytItem->setIsVideo(isVideo);
+        ytItem->setContentId(contentId);
 
         if (!isVideo)
         {
-            tWI->setDisabled(true);
-
             auto linkReply = net.start(url, QByteArray(), "Cookie: \r\n");
-            linkReply->setProperty("tWI", QVariant::fromValue((void *)tWI));
+            linkReply->setProperty("tWI", QVariant::fromValue((void *)ytItem));
             linkReplies += linkReply;
         }
 
         if (!thumbnail.isEmpty())
         {
             auto imageReply = net.start(thumbnail);
-            imageReply->setProperty("tWI", QVariant::fromValue((void *)tWI));
+            imageReply->setProperty("tWI", QVariant::fromValue((void *)ytItem));
             imageReplies += imageReply;
         }
     }
